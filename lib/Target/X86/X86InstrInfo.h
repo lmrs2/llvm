@@ -23,6 +23,7 @@
 #include "X86GenInstrInfo.inc"
 
 namespace llvm {
+  class MachineInstrBuilder;
   class X86RegisterInfo;
   class X86Subtarget;
 
@@ -564,6 +565,9 @@ private:
   /// operand and follow operands form a reference to the stack frame.
   bool isFrameOperand(const MachineInstr *MI, unsigned int Op,
                       int &FrameIndex) const;
+  
+  /// Expand the CTSELECT pseudo-instructions
+  bool ExpandCTSELECT( unsigned Opcode, MachineInstrBuilder &MIB ) const; 
 };
 
 } // End llvm namespace

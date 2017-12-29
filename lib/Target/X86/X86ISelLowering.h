@@ -97,6 +97,9 @@ namespace llvm {
       /// X86 Select
       SELECT,
 
+      /// X86 constant-time Select
+      CTSELECT, 
+
       // Same as SETCC except it's materialized with a sbb and the value is all
       // one's or all zero's.
       SETCC_CARRY,  // R = carry_bit ? ~0 : 0
@@ -625,6 +628,7 @@ namespace llvm {
 
     unsigned getJumpTableEncoding() const override;
     bool useSoftFloat() const override;
+    bool isSelectSupported(SelectSupportKind kind) const override;
 
     MVT getScalarShiftAmountTy(const DataLayout &, EVT) const override {
       return MVT::i8;
@@ -1036,6 +1040,7 @@ namespace llvm {
                       SDLoc dl, SelectionDAG &DAG) const;
     SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerSETCCE(SDValue Op, SelectionDAG &DAG) const;
+    SDValue LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerSELECT(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerJumpTable(SDValue Op, SelectionDAG &DAG) const;

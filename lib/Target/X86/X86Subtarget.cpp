@@ -294,6 +294,7 @@ void X86Subtarget::initializeEnvironment() {
   // FIXME: this is a known good value for Yonah. How about others?
   MaxInlineSizeThreshold = 128;
   UseSoftFloat = false;
+  HasCtSelect = false;
 }
 
 X86Subtarget &X86Subtarget::initializeSubtargetDependencies(StringRef CPU,

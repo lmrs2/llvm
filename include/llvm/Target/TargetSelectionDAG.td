@@ -175,6 +175,10 @@ def SDTSelectCC : SDTypeProfile<1, 5, [     // select_cc
   SDTCisVT<5, OtherVT>
 ]>;
 
+def SDTCtSelect : SDTypeProfile<1, 3, [       // ct_select
+  SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<2, 3>
+]>;
+
 def SDTBr : SDTypeProfile<0, 1, [           // br
   SDTCisVT<0, OtherVT>
 ]>;
@@ -452,6 +456,7 @@ def f16_to_fp  : SDNode<"ISD::FP16_TO_FP" , SDTIntToFPOp>;
 def fp_to_f16  : SDNode<"ISD::FP_TO_FP16" , SDTFPToIntOp>;
 
 def setcc      : SDNode<"ISD::SETCC"      , SDTSetCC>;
+def ctselect   : SDNode<"ISD::CTSELECT"   , SDTCtSelect>;
 def select     : SDNode<"ISD::SELECT"     , SDTSelect>;
 def vselect    : SDNode<"ISD::VSELECT"    , SDTVSelect>;
 def selectcc   : SDNode<"ISD::SELECT_CC"  , SDTSelectCC>;

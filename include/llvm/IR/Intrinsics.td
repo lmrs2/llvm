@@ -653,6 +653,11 @@ def int_masked_scatter: Intrinsic<[],
 def int_bitset_test : Intrinsic<[llvm_i1_ty], [llvm_ptr_ty, llvm_metadata_ty],
                                 [IntrNoMem]>;
 
+// Intrinsics to support constant-time choose
+let Properties = [IntrNoMem, IntrNoDuplicate] in {
+  def int_ct_choose : Intrinsic<[llvm_anyint_ty], [llvm_i1_ty, LLVMMatchType<0>, LLVMMatchType<0>]>;
+}
+
 //===----------------------------------------------------------------------===//
 // Target-specific intrinsics
 //===----------------------------------------------------------------------===//

@@ -301,6 +301,7 @@ private:
   SDValue PromoteIntOp_EXTRACT_SUBVECTOR(SDNode *N);
   SDValue PromoteIntOp_CONCAT_VECTORS(SDNode *N);
   SDValue PromoteIntOp_SCALAR_TO_VECTOR(SDNode *N);
+  SDValue PromoteIntOp_CTSELECT(SDNode *N, unsigned OpNo);
   SDValue PromoteIntOp_SELECT(SDNode *N, unsigned OpNo);
   SDValue PromoteIntOp_SELECT_CC(SDNode *N, unsigned OpNo);
   SDValue PromoteIntOp_SETCC(SDNode *N, unsigned OpNo);
@@ -814,6 +815,7 @@ private:
   // Generic Result Splitting.
   void SplitRes_MERGE_VALUES(SDNode *N, unsigned ResNo,
                              SDValue &Lo, SDValue &Hi);
+  void SplitRes_CTSELECT    (SDNode *N, SDValue &Lo, SDValue &Hi);
   void SplitRes_SELECT      (SDNode *N, SDValue &Lo, SDValue &Hi);
   void SplitRes_SELECT_CC   (SDNode *N, SDValue &Lo, SDValue &Hi);
   void SplitRes_UNDEF       (SDNode *N, SDValue &Lo, SDValue &Hi);

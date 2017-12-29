@@ -79,6 +79,67 @@ defm CMOVLE : CMOV<0x4E, "cmovle", X86_COND_LE>;
 defm CMOVG  : CMOV<0x4F, "cmovg" , X86_COND_G>;
 
 
+// Create pseudo instruction and do the pattern matching to them. 
+// We use a machine pass to lower these pseudos into cmov, in order 
+// to avoid backend optimizations
+let Uses = [EFLAGS], Predicates = [HasCMov], Constraints = "$t = $dst", 
+  isCodeGenOnly = 1, isNotDuplicable = 1, isPseudo = 1 in {
+
+  multiclass CTSELECT<PatLeaf CondNode> {
+					
+  // register-only
+  let isCommutable = 1, SchedRW = [WriteALU] in {
+
+      def NAME#16rr: PseudoI<(outs GR16:$dst), 
+			(ins GR16:$t, GR16:$f), 
+			[(set GR16:$dst, (X86ctselect GR16:$t, GR16:$f, CondNode, EFLAGS))]>;
+			
+      def NAME#32rr: PseudoI<(outs GR32:$dst), 
+			(ins GR32:$t, GR32:$f), 
+			[(set GR32:$dst, (X86ctselect GR32:$t, GR32:$f, CondNode, EFLAGS))]>;
+			
+      def NAME#64rr: PseudoI<(outs GR64:$dst), 
+			(ins GR64:$t, GR64:$f), 
+			[(set GR64:$dst, (X86ctselect GR64:$t, GR64:$f, CondNode, EFLAGS))]>;
+			
+  }
+		
+  // register-memory
+  let SchedRW = [WriteALULd, ReadAfterLd] in {
+
+      def NAME#16rm: PseudoI<(outs GR16:$dst), 
+			(ins GR16:$t, i16mem:$f), 
+			[(set GR16:$dst, (X86ctselect GR16:$t, (loadi16 addr:$f), CondNode, EFLAGS))]>;
+				
+      def NAME#32rm: PseudoI<(outs GR32:$dst), 
+ 			(ins GR32:$t, i32mem:$f), 
+			[(set GR32:$dst, (X86ctselect GR32:$t, (loadi32 addr:$f), CondNode, EFLAGS))]>;
+				
+      def NAME#64rm: PseudoI<(outs GR64:$dst), 
+			(ins GR64:$t, i64mem:$f), 
+			[(set GR64:$dst, (X86ctselect GR64:$t, (loadi64 addr:$f), CondNode, EFLAGS))]>;
+
+    }
+  }
+}
+
+defm CTSELECTB	: CTSELECT<X86_COND_B>;
+defm CTSELECTAE	: CTSELECT<X86_COND_AE>;
+defm CTSELECTE	: CTSELECT<X86_COND_E>;
+defm CTSELECTNE	: CTSELECT<X86_COND_NE>;
+defm CTSELECTBE	: CTSELECT<X86_COND_BE>;
+defm CTSELECTA	: CTSELECT<X86_COND_A>;
+defm CTSELECTL	: CTSELECT<X86_COND_L>;
+defm CTSELECTGE	: CTSELECT<X86_COND_GE>;
+defm CTSELECTLE	: CTSELECT<X86_COND_LE>;
+defm CTSELECTG	: CTSELECT<X86_COND_G>;
+defm CTSELECTP	: CTSELECT<X86_COND_P>;
+defm CTSELECTNP	: CTSELECT<X86_COND_NP>;
+defm CTSELECTS	: CTSELECT<X86_COND_S>;
+defm CTSELECTNS	: CTSELECT<X86_COND_NS>;
+defm CTSELECTO	: CTSELECT<X86_COND_O>;
+defm CTSELECTNO	: CTSELECT<X86_COND_NO>;
+
 // SetCC instructions.
 multiclass SETCC<bits<8> opc, string Mnemonic, PatLeaf OpNode> {
   let Uses = [EFLAGS] in {

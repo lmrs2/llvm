@@ -246,6 +246,8 @@ protected:
   /// Instruction itineraries for scheduling
   InstrItineraryData InstrItins;
 
+  /// Support for constant-time select
+  bool HasCtSelect;
 private:
 
   /// Override the stack alignment.
@@ -407,6 +409,7 @@ public:
   bool isAtom() const { return X86ProcFamily == IntelAtom; }
   bool isSLM() const { return X86ProcFamily == IntelSLM; }
   bool useSoftFloat() const { return UseSoftFloat; }
+  bool hasCtSelect() const { return HasCtSelect; }
 
   const Triple &getTargetTriple() const { return TargetTriple; }
 

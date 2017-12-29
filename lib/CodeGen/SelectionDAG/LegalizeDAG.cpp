@@ -3740,7 +3740,7 @@ bool SelectionDAGLegalize::ExpandNode(SDNode *Node) {
                              Tmp2, Tmp3, ISD::SETNE);
     }
     Results.push_back(Tmp1);
-    break;
+    break; 
   case ISD::BR_JT: {
     SDValue Chain = Node->getOperand(0);
     SDValue Table = Node->getOperand(1);
@@ -4389,6 +4389,18 @@ void SelectionDAGLegalize::PromoteNode(SDNode *Node) {
     Results.push_back(Tmp1);
     break;
   }
+  case ISD::CTSELECT: {
+    Tmp1 = Node->getOperand(0);
+    // Promote each of the values to the new type.
+    Tmp2 = DAG.getNode(ISD::SIGN_EXTEND, dl, NVT, Node->getOperand(1));
+    Tmp3 = DAG.getNode(ISD::SIGN_EXTEND, dl, NVT, Node->getOperand(2));
+    // Perform the larger operation, then round down.
+    Tmp1 = DAG.getNode(ISD::CTSELECT, dl, NVT, Tmp1, Tmp2, Tmp3);
+    Tmp1 = DAG.getNode(ISD::TRUNCATE, dl, Node->getValueType(0), Tmp1);
+    Results.push_back(Tmp1);
+    break;
+  }
+
   case ISD::VECTOR_SHUFFLE: {
     ArrayRef<int> Mask = cast<ShuffleVectorSDNode>(Node)->getMask();
 

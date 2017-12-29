@@ -893,6 +893,7 @@ bool DAGTypeLegalizer::PromoteIntegerOperand(SDNode *N, unsigned OpNo) {
                           Res = PromoteIntOp_SCALAR_TO_VECTOR(N); break;
   case ISD::VSELECT:
   case ISD::SELECT:       Res = PromoteIntOp_SELECT(N, OpNo); break;
+  case ISD::CTSELECT:     Res = PromoteIntOp_CTSELECT(N, OpNo); break;
   case ISD::SELECT_CC:    Res = PromoteIntOp_SELECT_CC(N, OpNo); break;
   case ISD::SETCC:        Res = PromoteIntOp_SETCC(N, OpNo); break;
   case ISD::SIGN_EXTEND:  Res = PromoteIntOp_SIGN_EXTEND(N); break;
@@ -984,6 +985,17 @@ void DAGTypeLegalizer::PromoteSetCCOperands(SDValue &NewLHS,SDValue &NewRHS,
     break;
   }
 }
+
+SDValue DAGTypeLegalizer::PromoteIntOp_CTSELECT(SDNode *N, unsigned OpNo) {
+  assert(OpNo == 0 && "Only know how to promote the condition!");	
+  SDValue Cond = N->getOperand(0);
+  EVT OpTy = N->getOperand(1).getValueType();
+  Cond = PromoteTargetBoolean(Cond, OpTy.getScalarType());	
+  SDValue Ops[] = { Cond/*Condition*/, N->getOperand(1)/*true value*/, N->getOperand(2)/*false value*/ };
+  return SDValue(DAG.UpdateNodeOperands(N, Ops), 0);
+}
+
+
 
 SDValue DAGTypeLegalizer::PromoteIntOp_ANY_EXTEND(SDNode *N) {
   SDValue Op = GetPromotedInteger(N->getOperand(0));
@@ -1296,6 +1308,7 @@ void DAGTypeLegalizer::ExpandIntegerResult(SDNode *N, unsigned ResNo) {
     llvm_unreachable("Do not know how to expand the result of this operator!");
 
   case ISD::MERGE_VALUES: SplitRes_MERGE_VALUES(N, ResNo, Lo, Hi); break;
+  case ISD::CTSELECT:     SplitRes_CTSELECT(N, Lo, Hi); break;
   case ISD::SELECT:       SplitRes_SELECT(N, Lo, Hi); break;
   case ISD::SELECT_CC:    SplitRes_SELECT_CC(N, Lo, Hi); break;
   case ISD::UNDEF:        SplitRes_UNDEF(N, Lo, Hi); break;

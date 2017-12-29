@@ -4460,6 +4460,39 @@ SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I, unsigned Intrinsic) {
     updateDAGForMaybeTailCall(MM);
     return nullptr;
   }
+  case Intrinsic::ct_choose: {
+    SDValue Cond = getValue(I.getArgOperand(0));
+    SDValue True = getValue(I.getArgOperand(1));
+    SDValue False = getValue(I.getArgOperand(2));
+    assert ( (True.getValueType() == False.getValueType()) && "Operands are of different types" );
+    if ( DAG.getTargetLoweringInfo().isSelectSupported(TargetLoweringBase::CtSelect) ) {
+      // Use a special Node that the backend will lower
+      Res = DAG.getNode(ISD::CTSELECT, sdl, True.getValueType(), Cond, True, False);
+    } else {
+      /*
+      The backend does not have support for constant-time select, so we default to 
+      a standard approach:
+      Int c = (Int)cond - 1; // cond = {0,1}
+      return (trueVal & ~c) | (falseVal & c); (1)
+
+      Another standard practice is:
+      Int c = 1 - (Int)cond;
+      return (trueVal*cond) + (falseVal*c); (2)
+
+      Below is the implementation for (1). We avoid (2) because 
+      multiplication is less likely to be constant time for different operands.
+      */		
+      EVT VT = True.getValueType();
+      SDValue ZExtCond = DAG.getZExtOrTrunc(Cond, sdl, VT);	                                          // ZExtCond = cast_extend Cond
+      SDValue ZExtCondMinusOne = DAG.getNode(ISD::SUB, sdl, VT, ZExtCond, DAG.getConstant(1, sdl, VT));	  // ZExtCondMinusOne = ZExtCond - 1 = ~ZExtCond
+      SDValue ZeroMinusZExtCond = DAG.getNode(ISD::SUB, sdl, VT, DAG.getConstant(0, sdl, VT), ZExtCond ); // ZeroMinusZExtCond = 0 - ZExtCond = extended ZExtCond
+      SDValue AndTrue = DAG.getNode(ISD::AND, sdl, VT, True, ZeroMinusZExtCond );
+      SDValue AndFalse = DAG.getNode(ISD::AND, sdl, VT, False, ZExtCondMinusOne );
+      Res = DAG.getNode(ISD::OR, sdl, VT, AndTrue, AndFalse);
+    }
+    setValue(&I, Res);
+    return nullptr;
+  }
   case Intrinsic::dbg_declare: {
     const DbgDeclareInst &DI = cast<DbgDeclareInst>(I);
     DILocalVariable *Variable = DI.getVariable();

@@ -5335,6 +5335,30 @@ static void expandLoadStackGuard(MachineInstrBuilder &MIB,
   MIB.addReg(Reg, RegState::Kill).addImm(1).addReg(0).addImm(0).addReg(0);
 }
 
+bool X86InstrInfo::ExpandCTSELECT( unsigned Opcode, MachineInstrBuilder &MIB ) const {
+  MachineInstr *MI = MIB.getInstr();
+  unsigned NbOperands = MI->getNumOperands();
+  MachineBasicBlock &MBB = *MIB->getParent();
+  DebugLoc DL = MIB->getDebugLoc();
+  MachineOperand & OperandRes = MIB->getOperand(0);
+  MachineOperand & OperandTrue = MIB->getOperand(1);
+  MachineOperand & OperandFalse = MIB->getOperand(2);
+  // the first 3 operands are registers
+  assert ( OperandTrue.isReg() && OperandRes.isReg() && OperandFalse.isReg() && "Operand not register");
+
+  //unsigned RegFalse = MIB->getOperand(2).getReg();
+  unsigned RegTrue  = MIB->getOperand(1).getReg();
+  unsigned RegRes   = MIB->getOperand(0).getReg(); 
+  // result and True registers are the same
+  assert (RegTrue == RegRes && "Result register different from True register");
+
+  MachineInstr *ins = BuildMI(MBB, MIB.getInstr(), DL, get(Opcode));
+  for ( unsigned i=0; i<NbOperands; ++i ) {
+    ins->addOperand( MIB->getOperand(i) );
+  }
+  return true;
+}
+
 bool X86InstrInfo::expandPostRAPseudo(MachineBasicBlock::iterator MI) const {
   bool HasAVX = Subtarget.hasAVX();
   MachineInstrBuilder MIB(*MI->getParent()->getParent(), MI);
@@ -5391,7 +5415,119 @@ bool X86InstrInfo::expandPostRAPseudo(MachineBasicBlock::iterator MI) const {
   case TargetOpcode::LOAD_STACK_GUARD:
     expandLoadStackGuard(MIB, *this);
     return true;
-  }
+  // B
+  case X86::CTSELECTB64rr:	return ExpandCTSELECT(X86::CMOVB64rr, MIB);
+  case X86::CTSELECTB64rm:	return ExpandCTSELECT(X86::CMOVB64rm, MIB);
+  case X86::CTSELECTB32rr:	return ExpandCTSELECT(X86::CMOVB32rr, MIB);
+  case X86::CTSELECTB32rm:	return ExpandCTSELECT(X86::CMOVB32rm, MIB);
+  case X86::CTSELECTB16rr:	return ExpandCTSELECT(X86::CMOVB16rr, MIB);
+  case X86::CTSELECTB16rm:	return ExpandCTSELECT(X86::CMOVB16rm, MIB);
+  // AE
+  case X86::CTSELECTAE64rr:	return ExpandCTSELECT(X86::CMOVAE64rr, MIB);
+  case X86::CTSELECTAE64rm:	return ExpandCTSELECT(X86::CMOVAE64rm, MIB);
+  case X86::CTSELECTAE32rr:	return ExpandCTSELECT(X86::CMOVAE32rr, MIB);
+  case X86::CTSELECTAE32rm:	return ExpandCTSELECT(X86::CMOVAE32rm, MIB);
+  case X86::CTSELECTAE16rr:	return ExpandCTSELECT(X86::CMOVAE16rr, MIB);
+  case X86::CTSELECTAE16rm:	return ExpandCTSELECT(X86::CMOVAE16rm, MIB);
+  // E
+  case X86::CTSELECTE64rr:	return ExpandCTSELECT(X86::CMOVE64rr, MIB);
+  case X86::CTSELECTE64rm:	return ExpandCTSELECT(X86::CMOVE64rm, MIB);
+  case X86::CTSELECTE32rr:	return ExpandCTSELECT(X86::CMOVE32rr, MIB);
+  case X86::CTSELECTE32rm:	return ExpandCTSELECT(X86::CMOVE32rm, MIB);
+  case X86::CTSELECTE16rr:	return ExpandCTSELECT(X86::CMOVE16rr, MIB);
+  case X86::CTSELECTE16rm:	return ExpandCTSELECT(X86::CMOVE16rm, MIB);
+  // NE
+  case X86::CTSELECTNE64rr:	return ExpandCTSELECT(X86::CMOVNE64rr, MIB);
+  case X86::CTSELECTNE64rm:	return ExpandCTSELECT(X86::CMOVNE64rm, MIB);
+  case X86::CTSELECTNE32rr:	return ExpandCTSELECT(X86::CMOVNE32rr, MIB);
+  case X86::CTSELECTNE32rm:	return ExpandCTSELECT(X86::CMOVNE32rm, MIB);
+  case X86::CTSELECTNE16rr:	return ExpandCTSELECT(X86::CMOVNE16rr, MIB);
+  case X86::CTSELECTNE16rm:	return ExpandCTSELECT(X86::CMOVNE16rm, MIB);
+  // BE
+  case X86::CTSELECTBE64rr:	return ExpandCTSELECT(X86::CMOVBE64rr, MIB);
+  case X86::CTSELECTBE64rm:	return ExpandCTSELECT(X86::CMOVBE64rm, MIB);
+  case X86::CTSELECTBE32rr:	return ExpandCTSELECT(X86::CMOVBE32rr, MIB);
+  case X86::CTSELECTBE32rm:	return ExpandCTSELECT(X86::CMOVBE32rm, MIB);
+  case X86::CTSELECTBE16rr:	return ExpandCTSELECT(X86::CMOVBE16rr, MIB);
+  case X86::CTSELECTBE16rm:	return ExpandCTSELECT(X86::CMOVBE16rm, MIB);
+  // A
+  case X86::CTSELECTA64rr:	return ExpandCTSELECT(X86::CMOVA64rr, MIB);
+  case X86::CTSELECTA64rm:	return ExpandCTSELECT(X86::CMOVA64rm, MIB);
+  case X86::CTSELECTA32rr:	return ExpandCTSELECT(X86::CMOVA32rr, MIB);
+  case X86::CTSELECTA32rm:	return ExpandCTSELECT(X86::CMOVA32rm, MIB);
+  case X86::CTSELECTA16rr:	return ExpandCTSELECT(X86::CMOVA16rr, MIB);
+  case X86::CTSELECTA16rm:	return ExpandCTSELECT(X86::CMOVA16rm, MIB);
+  // L
+  case X86::CTSELECTL64rr:	return ExpandCTSELECT(X86::CMOVL64rr, MIB);
+  case X86::CTSELECTL64rm:	return ExpandCTSELECT(X86::CMOVL64rm, MIB);
+  case X86::CTSELECTL32rr:	return ExpandCTSELECT(X86::CMOVL32rr, MIB);
+  case X86::CTSELECTL32rm:	return ExpandCTSELECT(X86::CMOVL32rm, MIB);
+  case X86::CTSELECTL16rr:	return ExpandCTSELECT(X86::CMOVL16rr, MIB);
+  case X86::CTSELECTL16rm:	return ExpandCTSELECT(X86::CMOVL16rm, MIB);
+  // GE
+  case X86::CTSELECTGE64rr:	return ExpandCTSELECT(X86::CMOVGE64rr, MIB);
+  case X86::CTSELECTGE64rm:	return ExpandCTSELECT(X86::CMOVGE64rm, MIB);
+  case X86::CTSELECTGE32rr:	return ExpandCTSELECT(X86::CMOVGE32rr, MIB);
+  case X86::CTSELECTGE32rm:	return ExpandCTSELECT(X86::CMOVGE32rm, MIB);
+  case X86::CTSELECTGE16rr:	return ExpandCTSELECT(X86::CMOVGE16rr, MIB);
+  case X86::CTSELECTGE16rm:	return ExpandCTSELECT(X86::CMOVGE16rm, MIB);
+  // LE
+  case X86::CTSELECTLE64rr:	return ExpandCTSELECT(X86::CMOVLE64rr, MIB);
+  case X86::CTSELECTLE64rm:	return ExpandCTSELECT(X86::CMOVLE64rm, MIB);
+  case X86::CTSELECTLE32rr:	return ExpandCTSELECT(X86::CMOVLE32rr, MIB);
+  case X86::CTSELECTLE32rm:	return ExpandCTSELECT(X86::CMOVLE32rm, MIB);
+  case X86::CTSELECTLE16rr:	return ExpandCTSELECT(X86::CMOVLE16rr, MIB);
+  case X86::CTSELECTLE16rm:	return ExpandCTSELECT(X86::CMOVLE16rm, MIB);
+  // G
+  case X86::CTSELECTG64rr:	return ExpandCTSELECT(X86::CMOVG64rr, MIB);
+  case X86::CTSELECTG64rm:	return ExpandCTSELECT(X86::CMOVG64rm, MIB);
+  case X86::CTSELECTG32rr:	return ExpandCTSELECT(X86::CMOVG32rr, MIB);
+  case X86::CTSELECTG32rm:	return ExpandCTSELECT(X86::CMOVG32rm, MIB);
+  case X86::CTSELECTG16rr:	return ExpandCTSELECT(X86::CMOVG16rr, MIB);
+  case X86::CTSELECTG16rm:	return ExpandCTSELECT(X86::CMOVG16rm, MIB);
+  // P
+  case X86::CTSELECTP64rr:	return ExpandCTSELECT(X86::CMOVP64rr, MIB);
+  case X86::CTSELECTP64rm:	return ExpandCTSELECT(X86::CMOVP64rm, MIB);
+  case X86::CTSELECTP32rr:	return ExpandCTSELECT(X86::CMOVP32rr, MIB);
+  case X86::CTSELECTP32rm:	return ExpandCTSELECT(X86::CMOVP32rm, MIB);
+  case X86::CTSELECTP16rr:	return ExpandCTSELECT(X86::CMOVP16rr, MIB);
+  case X86::CTSELECTP16rm:	return ExpandCTSELECT(X86::CMOVP16rm, MIB);
+  // NP
+  case X86::CTSELECTNP64rr:	return ExpandCTSELECT(X86::CMOVNP64rr, MIB);
+  case X86::CTSELECTNP64rm:	return ExpandCTSELECT(X86::CMOVNP64rm, MIB);
+  case X86::CTSELECTNP32rr:	return ExpandCTSELECT(X86::CMOVNP32rr, MIB);
+  case X86::CTSELECTNP32rm:	return ExpandCTSELECT(X86::CMOVNP32rm, MIB);
+  case X86::CTSELECTNP16rr:	return ExpandCTSELECT(X86::CMOVNP16rr, MIB);
+  case X86::CTSELECTNP16rm:	return ExpandCTSELECT(X86::CMOVNP16rm, MIB);
+  // S
+  case X86::CTSELECTS64rr:	return ExpandCTSELECT(X86::CMOVS64rr, MIB);
+  case X86::CTSELECTS64rm:	return ExpandCTSELECT(X86::CMOVS64rm, MIB);
+  case X86::CTSELECTS32rr:	return ExpandCTSELECT(X86::CMOVS32rr, MIB);
+  case X86::CTSELECTS32rm:	return ExpandCTSELECT(X86::CMOVS32rm, MIB);
+  case X86::CTSELECTS16rr:	return ExpandCTSELECT(X86::CMOVS16rr, MIB);
+  case X86::CTSELECTS16rm:	return ExpandCTSELECT(X86::CMOVS16rm, MIB);
+  // NS
+  case X86::CTSELECTNS64rr:	return ExpandCTSELECT(X86::CMOVNS64rr, MIB);
+  case X86::CTSELECTNS64rm:	return ExpandCTSELECT(X86::CMOVNS64rm, MIB);
+  case X86::CTSELECTNS32rr:	return ExpandCTSELECT(X86::CMOVNS32rr, MIB);
+  case X86::CTSELECTNS32rm:	return ExpandCTSELECT(X86::CMOVNS32rm, MIB);
+  case X86::CTSELECTNS16rr:	return ExpandCTSELECT(X86::CMOVNS16rr, MIB);
+  case X86::CTSELECTNS16rm:	return ExpandCTSELECT(X86::CMOVNS16rm, MIB);
+  // O
+  case X86::CTSELECTO64rr:	return ExpandCTSELECT(X86::CMOVO64rr, MIB);
+  case X86::CTSELECTO64rm:	return ExpandCTSELECT(X86::CMOVO64rm, MIB);
+  case X86::CTSELECTO32rr:	return ExpandCTSELECT(X86::CMOVO32rr, MIB);
+  case X86::CTSELECTO32rm:	return ExpandCTSELECT(X86::CMOVO32rm, MIB);
+  case X86::CTSELECTO16rr:	return ExpandCTSELECT(X86::CMOVO16rr, MIB);
+  case X86::CTSELECTO16rm:	return ExpandCTSELECT(X86::CMOVO16rm, MIB);
+  // NO
+  case X86::CTSELECTNO64rr:	return ExpandCTSELECT(X86::CMOVNO64rr, MIB);
+  case X86::CTSELECTNO64rm:	return ExpandCTSELECT(X86::CMOVNO64rm, MIB);
+  case X86::CTSELECTNO32rr:	return ExpandCTSELECT(X86::CMOVNO32rr, MIB);
+  case X86::CTSELECTNO32rm:	return ExpandCTSELECT(X86::CMOVNO32rm, MIB);
+  case X86::CTSELECTNO16rr:	return ExpandCTSELECT(X86::CMOVNO16rr, MIB);
+  case X86::CTSELECTNO16rm:	return ExpandCTSELECT(X86::CMOVNO16rm, MIB);
+  }	
   return false;
 }
 

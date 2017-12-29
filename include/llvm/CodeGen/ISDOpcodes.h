@@ -756,6 +756,9 @@ namespace ISD {
     /// known nonzero constant. The only operand here is the chain.
     GET_DYNAMIC_AREA_OFFSET,
 
+    /// CTSELECT - Constant-time SELECT
+    CTSELECT,
+
     /// BUILTIN_OP_END - This must be the last enum value in this list.
     /// The target-specific pre-isel opcode values start here.
     BUILTIN_OP_END

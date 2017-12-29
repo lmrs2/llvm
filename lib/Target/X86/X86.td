@@ -34,6 +34,9 @@ def Mode16Bit : SubtargetFeature<"16bit-mode", "In16BitMode", "true",
 def FeatureCMOV    : SubtargetFeature<"cmov","HasCMov", "true",
                                       "Enable conditional move instructions">;
 
+def FeatureCtSelect : SubtargetFeature<"ctselect", "HasCtSelect", "true",
+                       "Use CMOV instruction to implement constant-time select">;
+
 def FeaturePOPCNT   : SubtargetFeature<"popcnt", "HasPOPCNT", "true",
                                        "Support POPCNT instruction">;
 
@@ -88,7 +91,7 @@ def Feature3DNowA  : SubtargetFeature<"3dnowa", "X863DNowLevel", "ThreeDNowA",
 // without disabling 64-bit mode.
 def Feature64Bit   : SubtargetFeature<"64bit", "HasX86_64", "true",
                                       "Support 64-bit instructions",
-                                      [FeatureCMOV]>;
+                                      [FeatureCMOV, FeatureCtSelect]>;
 def FeatureCMPXCHG16B : SubtargetFeature<"cx16", "HasCmpxchg16b", "true",
                                       "64-bit with cmpxchg16b",
                                       [Feature64Bit]>;

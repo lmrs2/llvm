@@ -412,6 +412,12 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
 
   // These should be promoted to a larger select which is supported.
   setOperationAction(ISD::SELECT          , MVT::i1   , Promote);
+  // X86 lowers constant select itself.
+  setOperationAction(ISD::CTSELECT        , MVT::i8   , Promote);
+  AddPromotedToType(ISD::CTSELECT         , MVT::i8   , MVT::i16);
+  setOperationAction(ISD::CTSELECT        , MVT::i16  , Custom);
+  setOperationAction(ISD::CTSELECT        , MVT::i32  , Custom);
+  setOperationAction(ISD::CTSELECT        , MVT::i64  , Custom);
   // X86 wants to expand cmov itself.
   setOperationAction(ISD::SELECT          , MVT::i8   , Custom);
   setOperationAction(ISD::SELECT          , MVT::i16  , Custom);
@@ -2058,6 +2064,11 @@ unsigned X86TargetLowering::getJumpTableEncoding() const {
 
 bool X86TargetLowering::useSoftFloat() const {
   return Subtarget->useSoftFloat();
+}
+
+bool X86TargetLowering::isSelectSupported(SelectSupportKind kind) const {
+  if ( TargetLoweringBase::CtSelect == kind ) return Subtarget->hasCtSelect();
+  return TargetLoweringBase::isSelectSupported(kind);
 }
 
 const MCExpr *
@@ -13916,6 +13927,7 @@ static bool hasNonFlagsUse(SDValue Op) {
     }
 
     if (User->getOpcode() != ISD::BRCOND && User->getOpcode() != ISD::SETCC &&
+        !(User->getOpcode() == ISD::CTSELECT && UOpNo == 0) &&
         !(User->getOpcode() == ISD::SELECT && UOpNo == 0))
       return true;
   }
@@ -14970,6 +14982,94 @@ static bool isTruncWithZeroHighBitsInput(SDValue V, SelectionDAG &DAG) {
   unsigned InBits = VOp0.getValueSizeInBits();
   unsigned Bits = V.getValueSizeInBits();
   return DAG.MaskedValueIsZero(VOp0, APInt::getHighBitsSet(InBits,InBits-Bits));
+}
+
+SDValue X86TargetLowering::LowerCTSELECT(SDValue Op, SelectionDAG &DAG) const {
+  // Note: this is a identical to LowerSELECT but 
+  // we only lower to X86ISD::CTSELECT	
+  bool addTest = true;
+  SDValue Cond  = Op.getOperand(0);
+  SDValue Op1 = Op.getOperand(1);
+  SDValue Op2 = Op.getOperand(2);
+  SDLoc DL(Op);
+  MVT VT = Op1.getSimpleValueType();
+  SDValue CC;
+ 
+  assert ( !VT.isVector() && "Vector CTSELECT not supported" );
+ 
+  if (Cond.getOpcode() == ISD::SETCC) {
+    if (SDValue NewCond = LowerSETCC(Cond, DAG))
+      Cond = NewCond; 
+  }
+  
+  // Look past (and (setcc_carry (cmp ...)), 1).
+  if (Cond.getOpcode() == ISD::AND &&
+      Cond.getOperand(0).getOpcode() == X86ISD::SETCC_CARRY &&
+      isOneConstant(Cond.getOperand(1))) {
+        Cond = Cond.getOperand(0);
+  }
+  
+  // If condition flag is set by a X86ISD::CMP, then use it as the condition
+  // setting operand in place of the X86ISD::SETCC.
+  unsigned CondOpcode = Cond.getOpcode();
+  if (CondOpcode == X86ISD::SETCC ||
+      CondOpcode == X86ISD::SETCC_CARRY) {
+    CC = Cond.getOperand(0);
+
+    SDValue Cmp = Cond.getOperand(1);
+    unsigned Opc = Cmp.getOpcode();
+    MVT VT = Op.getSimpleValueType();
+    assert ( !VT.isFloatingPoint() && "Invalid floating point use in CTSELECT condition" );
+
+    if ( isX86LogicalCmp(Cmp) ||
+        Opc == X86ISD::BT) { // FIXME
+      Cond = Cmp;
+      addTest = false; 
+    }
+  } 
+
+  if (addTest) {
+    // Look past the truncate if the high bits are known zero.
+    if (isTruncWithZeroHighBitsInput(Cond, DAG)) {
+      Cond = Cond.getOperand(0);
+  }
+      
+    // We know the result of AND is compared against zero. Try to match
+    // it to BT.
+    if (Cond.getOpcode() == ISD::AND && Cond.hasOneUse()) {
+      if (SDValue NewSetCC = LowerToBT(Cond, ISD::SETNE, DL, DAG)) {
+        CC = NewSetCC.getOperand(0);
+        Cond = NewSetCC.getOperand(1);
+        addTest = false; 
+      }
+    }
+  }
+
+  if (addTest) {
+    CC = DAG.getConstant(X86::COND_NE, DL, MVT::i8);
+    Cond = EmitTest(Cond, X86::COND_NE, DL, DAG); 
+  }
+
+  // X86 doesn't have an i8 cmov. If both operands are the result of a truncate
+  // widen the cmov and push the truncate through. This avoids introducing a new
+  // branch during isel and doesn't add any extensions.
+  if (Op.getValueType() == MVT::i8 &&
+      Op1.getOpcode() == ISD::TRUNCATE && Op2.getOpcode() == ISD::TRUNCATE) {
+    SDValue T1 = Op1.getOperand(0), T2 = Op2.getOperand(0);
+    if (T1.getValueType() == T2.getValueType() &&
+        // Blacklist CopyFromReg to avoid partial register stalls.
+        T1.getOpcode() != ISD::CopyFromReg && T2.getOpcode()!=ISD::CopyFromReg){
+      SDVTList VTs = DAG.getVTList(T1.getValueType(), MVT::Glue);
+      SDValue CtSelect = DAG.getNode(X86ISD::CTSELECT, DL, VTs, T2, T1, CC, Cond);
+      return DAG.getNode(ISD::TRUNCATE, DL, Op.getValueType(), CtSelect);
+    }
+  }
+	
+  // X86ISD::CMOV means set the result (which is operand 1) to the RHS if
+  // condition is true.
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue Ops[] = { Op2, Op1, CC, Cond };
+  return DAG.getNode(X86ISD::CTSELECT, DL, VTs, Ops);
 }
 
 SDValue X86TargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
@@ -20313,6 +20413,7 @@ SDValue X86TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::FGETSIGN:           return LowerFGETSIGN(Op, DAG);
   case ISD::SETCC:              return LowerSETCC(Op, DAG);
   case ISD::SETCCE:             return LowerSETCCE(Op, DAG);
+  case ISD::CTSELECT:           return LowerCTSELECT(Op, DAG);
   case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
   case ISD::JumpTable:          return LowerJumpTable(Op, DAG);
@@ -20687,6 +20788,7 @@ const char *X86TargetLowering::getTargetNodeName(unsigned Opcode) const {
   case X86ISD::FSETCC:             return "X86ISD::FSETCC";
   case X86ISD::FGETSIGNx86:        return "X86ISD::FGETSIGNx86";
   case X86ISD::CMOV:               return "X86ISD::CMOV";
+  case X86ISD::CTSELECT:           return "X86ISD::CTSELECT";
   case X86ISD::BRCOND:             return "X86ISD::BRCOND";
   case X86ISD::RET_FLAG:           return "X86ISD::RET_FLAG";
   case X86ISD::IRET:               return "X86ISD::IRET";

@@ -1184,6 +1184,39 @@ defm : CMOVmr<X86_COND_NS, CMOVS16rm , CMOVS32rm , CMOVS64rm>;
 defm : CMOVmr<X86_COND_O , CMOVNO16rm, CMOVNO32rm, CMOVNO64rm>;
 defm : CMOVmr<X86_COND_NO, CMOVO16rm , CMOVO32rm , CMOVO64rm>;
 
+// Constant-time select with folded loads with operands swapped and conditions
+// inverted.
+multiclass CTSELECTmr<PatLeaf InvertedCond, Instruction Inst16, Instruction Inst32,
+                  Instruction Inst64> {
+  let Predicates = [HasCMov] in {
+    def : Pat<(X86ctselect (loadi16 addr:$src1), GR16:$src2, InvertedCond, EFLAGS),
+              (Inst16 GR16:$src2, addr:$src1)>;
+    def : Pat<(X86ctselect (loadi32 addr:$src1), GR32:$src2, InvertedCond, EFLAGS),
+              (Inst32 GR32:$src2, addr:$src1)>;
+    def : Pat<(X86ctselect (loadi64 addr:$src1), GR64:$src2, InvertedCond, EFLAGS),
+              (Inst64 GR64:$src2, addr:$src1)>;
+  }
+}
+
+// BELOW: pattern matching to pseudo CTSELECT* instructions
+// to avoid backend optimizations
+defm : CTSELECTmr<X86_COND_B , CTSELECTAE16rm, CTSELECTAE32rm, CTSELECTAE64rm>;
+defm : CTSELECTmr<X86_COND_AE, CTSELECTB16rm , CTSELECTB32rm , CTSELECTB64rm>;
+defm : CTSELECTmr<X86_COND_E , CTSELECTNE16rm, CTSELECTNE32rm, CTSELECTNE64rm>;
+defm : CTSELECTmr<X86_COND_NE, CTSELECTE16rm , CTSELECTE32rm , CTSELECTE64rm>;
+defm : CTSELECTmr<X86_COND_BE, CTSELECTA16rm , CTSELECTA32rm , CTSELECTA64rm>;
+defm : CTSELECTmr<X86_COND_A , CTSELECTBE16rm, CTSELECTBE32rm, CTSELECTBE64rm>;
+defm : CTSELECTmr<X86_COND_L , CTSELECTGE16rm, CTSELECTGE32rm, CTSELECTGE64rm>;
+defm : CTSELECTmr<X86_COND_GE, CTSELECTL16rm , CTSELECTL32rm , CTSELECTL64rm>;
+defm : CTSELECTmr<X86_COND_LE, CTSELECTG16rm , CTSELECTG32rm , CTSELECTG64rm>;
+defm : CTSELECTmr<X86_COND_G , CTSELECTLE16rm, CTSELECTLE32rm, CTSELECTLE64rm>;
+defm : CTSELECTmr<X86_COND_P , CTSELECTNP16rm, CTSELECTNP32rm, CTSELECTNP64rm>;
+defm : CTSELECTmr<X86_COND_NP, CTSELECTP16rm , CTSELECTP32rm , CTSELECTP64rm>;
+defm : CTSELECTmr<X86_COND_S , CTSELECTNS16rm, CTSELECTNS32rm, CTSELECTNS64rm>;
+defm : CTSELECTmr<X86_COND_NS, CTSELECTS16rm , CTSELECTS32rm , CTSELECTS64rm>;
+defm : CTSELECTmr<X86_COND_O , CTSELECTNO16rm, CTSELECTNO32rm, CTSELECTNO64rm>;
+defm : CTSELECTmr<X86_COND_NO, CTSELECTO16rm , CTSELECTO32rm , CTSELECTO64rm>;
+
 // zextload bool -> zextload byte
 def : Pat<(zextloadi8i1  addr:$src), (AND8ri (MOV8rm addr:$src), (i8 1))>;
 def : Pat<(zextloadi16i1 addr:$src), (AND16ri8 (MOVZX16rm8 addr:$src), (i16 1))>;

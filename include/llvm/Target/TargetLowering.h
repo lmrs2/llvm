@@ -122,8 +122,9 @@ public:
     ScalarValSelect,      // The target supports scalar selects (ex: cmov).
     ScalarCondVectorVal,  // The target supports selects with a scalar condition
                           // and vector values (ex: cmov).
-    VectorMaskSelect      // The target supports vector selects with a vector
+    VectorMaskSelect,     // The target supports vector selects with a vector
                           // mask (ex: x86 blends).
+    CtSelect		  // The target implements a custom constant-time select
   };
 
   /// Enum that specifies what an atomic load/AtomicRMWInst is expanded
@@ -190,7 +191,8 @@ public:
   /// Return true if the select operation is expensive for this target.
   bool isSelectExpensive() const { return SelectIsExpensive; }
 
-  virtual bool isSelectSupported(SelectSupportKind /*kind*/) const {
+  virtual bool isSelectSupported(SelectSupportKind kind) const {
+    if ( kind == CtSelect ) return false;
     return true;
   }
 
