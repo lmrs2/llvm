@@ -37,6 +37,12 @@ using namespace llvm;
 
 #define LEN(X) sizeof(X)/sizeof((X)[0])
 
+// Note: Zerostack is not the best name for this pass. The only thing is does is propagate the annotations from source code to IR
+// It was initially declared as a module. But in combination with PassManagerBuilder::EP_EarlyAsPossible. 
+// In the original LLVM version I used (3.8.X), the pass was automatically loaded. When reproducing this on this version to open 
+// source the code, I found it is not automatically loaded. I have not had time to troubleshoot the reason why. So as a quick workaround, 
+// this pass is loaded "manually" thru clang -Xclang -load -Xclang LLVMZerostack.so. It is done un musl-clang.
+
 namespace {
 
   class Zerostack : public FunctionPass {
@@ -51,29 +57,26 @@ namespace {
 	bool runOnFunction( Function & F ) override {
 		
 		Module & M = *F.getParent();
-		errs() << "Zerostack's module!! " << M.getName()  << " for function " << F.getName() << "\n";
+		//errs() << "Zerostack's module!! " << M.getName()  << " for function " << F.getName() << "\n";
 
-		//for (auto &F : M) {
-		//	errs() << "F:" << F << "\n";
-		//}	
 		// https://homes.cs.washington.edu/~bholt/posts/llvm-quick-tricks.html
 		GlobalVariable * global_annos = M.getNamedGlobal("llvm.global.annotations");
 		if (global_annos) {
 		
-			errs() << "global_annos = " << *global_annos << "\n\n";
+			//errs() << "global_annos = " << *global_annos << "\n\n";
 			
 			ConstantArray * CA = cast<ConstantArray>(global_annos->getOperand(0));
 			for (unsigned i=0; i<CA->getNumOperands(); i++) {
 				ConstantStruct * CS = cast<ConstantStruct>(CA->getOperand(i));
 				assert ( CS && "CS is null" );
-				errs() << "CS[" << i << "] = " << *CS << "\n\n";
+				//errs() << "CS[" << i << "] = " << *CS << "\n\n";
 				if (Function * F = dyn_cast<Function>(CS->getOperand(0)->getOperand(0))) {
 					
 					//errs() << "		F:" << *F << "\n\n";
 					StringRef anno = cast<ConstantDataArray>(cast<GlobalVariable>(CS->getOperand(1)->getOperand(0))->getOperand(0))->getAsCString();
 					if ( !F->hasFnAttribute(anno) ) {
-						errs() << "		Function " << F->getName() << " Added Anno " << anno << "\n";
-						errs() << " current attr:" << F->hasFnAttribute(anno) << "\n";
+						//errs() << "		Function " << F->getName() << " Added Anno " << anno << "\n";
+						//errs() << " current attr:" << F->hasFnAttribute(anno) << "\n";
 						F->addFnAttr(anno); // add function annotation here. This is used by backend pass to identify sensitive functions
 					}
 				} 
@@ -85,7 +88,6 @@ namespace {
   };
 }
 
-// clang -Xclang -load -Xclang LLVMZerostack.so file.c -o file
 char Zerostack::ID = 0;
 
 // to be able to use it in clang directly
@@ -102,44 +104,10 @@ static void registerZerostackPass(const PassManagerBuilder &,
 //        RegisterMyPass0(PassManagerBuilder::EP_EnabledOnOptLevel0, registerZerostackPass);
 
 
-// Call pass for all optimization levels
+// Called pass for all optimization levels
 static RegisterStandardPasses RegisterZerostackPass(
      PassManagerBuilder::EP_EarlyAsPossible, registerZerostackPass);
 
 // to be able to use it with opt             
 static RegisterPass<Zerostack> X("zerostack", "Zerostack Pass");
 
-#if 0
-
-static void registerZerostack(const PassManagerBuilder &,
-						 legacy::PassManagerBase &PM) {
-  PM.add(new Zerostack());
-}
-
-static RegisterStandardPasses
-  RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible,	
-				 registerZerostack);
-
-// to be able to use it with opt             
-static RegisterPass<Zerostack> X("Zerostack", "Zerostack Pass to annotate sensitive functions");
-#endif
-// INITIALIZE_PASS_BEGIN(Zerostack, "zerostack",
-// 				"Zerostack pass", false, false)
-// //INITIALIZE_PASS_DEPENDENCY(LazyValueInfo)
-// //INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-// INITIALIZE_PASS_END(Lolo, "zerostack",
-// 				"Zerostack pass", false, false)
-
-//ModulePass *llvm::createZerostackPass() { return new Zerostack(); }
-// Initialization Routines
-// void llvm::initializeInstCombine(PassRegistry &Registry) {
-//   initializeInstructionCombiningPassPass(Registry);
-// }
-
-// void LLVMInitializeInstCombine(LLVMPassRegistryRef R) {
-//   initializeInstructionCombiningPassPass(*unwrap(R));
-// }
-
-// FunctionPass *llvm::createInstructionCombiningPass() {
-//   return new InstructionCombiningPass();
-// }

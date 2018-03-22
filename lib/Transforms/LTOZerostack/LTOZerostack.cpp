@@ -129,7 +129,7 @@ namespace {
 		void deleteNodes() {
 			for ( auto & it : FunctionMap ) {
 				CFGNode *n = it.getValue(); // getKey()
-				errs() << "Deleting node " << n->getName() << "\n";
+				//errs() << "Deleting node " << n->getName() << "\n";
 				delete n;
 			}
 			FunctionMap.clear();
@@ -157,7 +157,7 @@ namespace {
 		bool runOnModule( Module & M ) override {
 			
 			// LLVMgold plugin is loaded in function AddGoldPlugin() of file ../tools/clang/lib/Driver/Tools.cpp
-			errs() << "LTOZerostack's module!!" << M.getName() << "\n";
+			//errs() << "LTOZerostack's module!!" << M.getName() << "\n";
 
 			
 			for ( auto& F : M ) {
@@ -262,7 +262,7 @@ namespace {
 				MDNode *MD = I->getMetadata("tyann");
 				if (MD) {
 					auto *MDS = cast<MDString>(MD->getOperand(0));
-					errs() << "MD:" << MDS->getString() << "\n";
+					//errs() << "MD:" << MDS->getString() << "\n";
 					return MDS->getString();
 				}
 			}
