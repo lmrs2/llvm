@@ -34,6 +34,7 @@
 #include "llvm/Transforms/IPO/InferFunctionAttrs.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Vectorize.h"
+#include "llvm/Transforms/LTOZerostack.h"
 
 using namespace llvm;
 
@@ -644,6 +645,8 @@ void PassManagerBuilder::populateLTOPassManager(legacy::PassManagerBase &PM) {
 
   if (VerifyOutput)
     PM.add(createVerifierPass());
+
+  PM.add(createLTOZerostackPass());
 }
 
 inline PassManagerBuilder *unwrap(LLVMPassManagerBuilderRef P) {

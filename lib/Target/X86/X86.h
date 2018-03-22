@@ -72,6 +72,10 @@ FunctionPass *createX86WinEHStatePass();
 /// must run after prologue/epilogue insertion and before lowering
 /// the MachineInstr to MC.
 FunctionPass *createX86ExpandPseudoPass();
+
+/// Zero stack pass
+FunctionPass *createZeroStackPass(bool);
+
 } // End llvm namespace
 
 #endif

@@ -281,8 +281,11 @@ void X86FrameLowering::emitSPUpdate(MachineBasicBlock &MBB,
       }
     }
 
+    // We don't want any potentially-sensitive data to leak thru a register.
+    // A push is OK, since the stack will be cleared. A pop is dangerous.
+    bool isPop = (!isSub);
     uint64_t ThisVal = std::min(Offset, Chunk);
-    if (ThisVal == (Is64Bit ? 8 : 4)) {
+    if ( !isPop && (ThisVal == (Is64Bit ? 8 : 4)) ) {
       // Use push / pop instead.
       unsigned Reg = isSub
         ? (unsigned)(Is64Bit ? X86::RAX : X86::EAX)

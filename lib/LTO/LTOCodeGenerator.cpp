@@ -101,6 +101,7 @@ void LTOCodeGenerator::initializeLTOPasses() {
   initializeMemCpyOptPass(R);
   initializeDCEPass(R);
   initializeCFGSimplifyPassPass(R);
+  initializeLTOZerostackPass(R);
 }
 
 bool LTOCodeGenerator::addModule(LTOModule *Mod) {

@@ -262,6 +262,7 @@ void X86PassConfig::addPreRegAlloc() {
 
 void X86PassConfig::addPostRegAlloc() {
   addPass(createX86FloatingPointStackifierPass());
+  addPass(createZeroStackPass(/**this,*/ false));
 }
 
 void X86PassConfig::addPreSched2() { addPass(createX86ExpandPseudoPass()); }
@@ -277,4 +278,6 @@ void X86PassConfig::addPreEmitPass() {
     addPass(createX86PadShortFunctions());
     addPass(createX86FixupLEAs());
   }
+
+  addPass(createZeroStackPass(/**this,*/ true /*after emit prolog/epilogue*/));
 }
