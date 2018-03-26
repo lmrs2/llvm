@@ -40,6 +40,22 @@ using namespace llvm;
 #define DEBUG_TYPE "X86Zerostack"
 #define UNUSED(V)	(void*)(V)
 
+/*
+This code does:
+	- in runOnMachineFunctionBeforePEI()
+		- collects all RET instructions
+		- computes the stack usage (variable FunctionStackOffset) due to function call (see function runOnMachineBasicBlockBeforePEI())
+	- in runOnMachineFunctionAfterPEI()
+		- computes stack usage (variable Offset) in function runOnMachineFunctionAfterPEI() using getStackSize() and estimateStackSize()
+			I am not sure FunctionStackOffset is needed at all, but I've added anyway.
+		- erase stack used and registers
+
+What we need for production code:
+	- more documentation
+	- split the 3 implementations in different files
+	- remove MACRO to select between implementations, and use compiler option instead
+
+*/
 
 // =================================================================
 //

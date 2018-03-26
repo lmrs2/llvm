@@ -36,7 +36,12 @@
 #include <set>
 #include <cctype>
 
-
+/*
+This code retrieves the callees of each function, and stored them in a file META_FILE. This is used for 
+the callgraph-based solution.
+This file is then used by the backend. The backend augments it with stack/register information.
+Then the python script uses this information to compute the maximum stack usage.
+*/
  
 using namespace llvm;
 
@@ -50,26 +55,26 @@ const char * META_FILE = "/tmp/metafile_pass";
 
 namespace {
 	
-  	// LTOZerostack - The first implementation, without getAnalysisUsage.
+  	// LTOZerostack 
   	class LTOZerostack : public ModulePass {
     
-    	class CFGNode {
+    	class CGNode {
 		public:
 			
-			typedef StringMapIterator<CFGNode*> iterator;
+			typedef StringMapIterator<CGNode*> iterator;
 		
-			CFGNode(StringRef R, size_t n = 16) {
+			CGNode(StringRef R, size_t n = 16) {
 				Name = R;
 				isChild = false;
 				isExternal = true;
 				isVisited = false;
 				isAnnotation = false;
-				ChildMap = new StringMap<CFGNode*>(n);
+				ChildMap = new StringMap<CGNode*>(n);
 				assert ( ChildMap && "Cannot allocate ChildMap" );
 			}
 			
 			// Note: we don't delete the elements, this is done thru the hash map FunctionMap
-			virtual ~CFGNode() {
+			virtual ~CGNode() {
 				if ( ChildMap ) {
 					delete ChildMap;
 				}
@@ -87,14 +92,14 @@ namespace {
 			
 			void setName(StringRef N) { Name = N; }
 			StringRef getName() { return Name; }
-			void addChild( CFGNode * node ) {
+			void addChild( CGNode * node ) {
 				assert (node);
-				ChildMap->insert( std::pair<StringRef, CFGNode*>(node->Name, node) );
+				ChildMap->insert( std::pair<StringRef, CGNode*>(node->Name, node) );
 				
 			}
 			
 			
-			CFGNode* getChild(StringRef Name) {
+			CGNode* getChild(StringRef Name) {
 				if ( ChildMap ) {
 					return ChildMap->lookup(Name);
 				}
@@ -106,7 +111,7 @@ namespace {
 			
 		private:
 			std::string Name;
-			StringMap<CFGNode*>* ChildMap;	// this class's ownership
+			StringMap<CGNode*>* ChildMap;	// this class's ownership
 			bool isChild;
 			bool isExternal = true;
 			bool isVisited = false;	// I add this for aliases
@@ -115,27 +120,27 @@ namespace {
 		};
 	
 		std::set<StringRef>  AnnotationSet;	// all know annotation kept here
-	    StringMap<CFGNode*> FunctionMap;	// all the nodes kept here, fast access, simple deletion
+	    StringMap<CGNode*> FunctionMap;	// all the nodes kept here, fast access, simple deletion
 	    //StringMap<StringRef> AliasMap;
     
-	    CFGNode * newNode(StringRef N) {
-			CFGNode * n = new CFGNode(N);
+	    CGNode * newNode(StringRef N) {
+			CGNode * n = new CGNode(N);
 			assert (n && "Cannot allocate node");
 			assert ( 0 == ListAllFunctions(N) );
-			FunctionMap.insert( std::pair<StringRef, CFGNode*>(n->getName(), n) );
+			FunctionMap.insert( std::pair<StringRef, CGNode*>(n->getName(), n) );
 			return n;
 		}
 	
 		void deleteNodes() {
 			for ( auto & it : FunctionMap ) {
-				CFGNode *n = it.getValue(); // getKey()
+				CGNode *n = it.getValue(); // getKey()
 				//errs() << "Deleting node " << n->getName() << "\n";
 				delete n;
 			}
 			FunctionMap.clear();
 		}
 	
-		CFGNode * ListAllFunctions( StringRef N ) {
+		CGNode * ListAllFunctions( StringRef N ) {
 			return FunctionMap.lookup( N );
 		}
 	
@@ -170,14 +175,14 @@ namespace {
 			// reset the visited node
 			#define RESET_VISTED \
 					for ( auto & it : FunctionMap )  {	\
-						CFGNode *n = it.getValue();	\
+						CGNode *n = it.getValue();	\
 						n->setVisited(false);			\
 					}	
 			
 			RESET_VISTED
 			// this prints all nodes	
 			for ( auto & it : FunctionMap ) {
-				CFGNode *n = it.getValue();
+				CGNode *n = it.getValue();
 				printNode( n, "" );
 			}
 			
@@ -212,11 +217,11 @@ namespace {
 			assert ( outfs.is_open() );
 			
 			for ( auto & it : FunctionMap ) {
-				CFGNode *n = it.getValue();
+				CGNode *n = it.getValue();
 				if ( !n->getExternal() /*|| n->getAnnotation()*/ ) {
 					//errs() << n->getName() << ":";
 					outfs << n->getName().str() << ":";
-					for ( CFGNode::iterator it = n->begin(), eit = n->end(); eit != it; ++it ) {
+					for ( CGNode::iterator it = n->begin(), eit = n->end(); eit != it; ++it ) {
 						//errs() << it->getValue()->getName() << ",";
 						outfs << it->getValue()->getName().str() << ",";
 					}
@@ -230,7 +235,7 @@ namespace {
 	
 	
 		// ---------------------------------
-		void printNode(CFGNode * n, Twine Ident) {
+		void printNode(CGNode * n, Twine Ident) {
 			
 			if ( n ) {
 				
@@ -246,7 +251,7 @@ namespace {
 				// the the node visited
 				n->setVisited( true );
 				
-				for ( CFGNode::iterator it = n->begin(), eit = n->end(); eit != it; ++it ) {
+				for ( CGNode::iterator it = n->begin(), eit = n->end(); eit != it; ++it ) {
 					// recurse only if the function is not recursive
 					if ( n != it->getValue() ) {
 						printNode( it->getValue()	, Ident + " " );
@@ -278,7 +283,7 @@ namespace {
 			// TODO: check intrinsic function's use of the stack
 			if ( F.isIntrinsic() ) { return false; }
 			
-			CFGNode * ThisNode = 0;
+			CGNode * ThisNode = 0;
 			DILocation *Loc = 0;
 			if ( (ThisNode = ListAllFunctions( F.getName() )) == NULL ) { 
 				// function never visited or called
@@ -403,7 +408,7 @@ namespace {
 							assert ( F.getName() != syscallInst && "Found recursive function in inline asm" );
 							
 							// create the node only if it does not exist
-							CFGNode * asmNode = 0;
+							CGNode * asmNode = 0;
 							if ( !(asmNode = ListAllFunctions( /*IASM->getAsmString()*/ syscallInst ) ) ) {
 								asmNode = newNode( /*IASM->getAsmString()*/ syscallInst );
 							} 
@@ -423,7 +428,7 @@ namespace {
 								// check for recursive function - now cycle detected in python script
 								// assert ( Callee->getName() != F.getName() && "Found recursive function in Callee" );
 								
-								CFGNode * calleeNode = 0;
+								CGNode * calleeNode = 0;
 								if ( !(calleeNode = ListAllFunctions( Callee->getName() ) ) ) {
 									calleeNode = newNode( Callee->getName() );
 								} 
@@ -464,7 +469,7 @@ namespace {
 									// check for recursive function - now cycle detected in python script
 									// assert ( GA->getName() != F.getName() && AF->getName() != F.getName() && "Found recursive function in GlobalAlias" );
 									
-									CFGNode * aliasNode = 0;
+									CGNode * aliasNode = 0;
 									if ( !(aliasNode = ListAllFunctions( AF->getName() ) ) ) {
 										aliasNode = newNode( AF->getName() );
 									} 
@@ -481,7 +486,7 @@ namespace {
 									if ( FPAnno == "" ) { FPAnno = getCallAnnotation( CI ); }
 									if ( FPAnno == "" ) {
 									
-										CFGNode * unknownNode = 0;
+										CGNode * unknownNode = 0;
 										StringRef unknownName = "@UNKNOWN_POINTER";
 										if ( !(unknownNode = ListAllFunctions( unknownName ) ) ) {
 											unknownNode = newNode( unknownName );
@@ -495,7 +500,7 @@ namespace {
 										
 										//errs() << "Got annotation:" << FPAnno << "\n";
 										
-										CFGNode * gpNode = 0;
+										CGNode * gpNode = 0;
 										StringRef gpName = (Twine("@ANNOTATED_POINTER_") + Twine(FPAnno)).str();
 										if ( !(gpNode = ListAllFunctions( gpName ) ) ) {
 											gpNode = newNode( gpName );
