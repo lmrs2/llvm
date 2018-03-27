@@ -66,7 +66,7 @@ What we need for production code:
 
 // http://llvm.org/docs/CommandLine.html#boolean-arguments
 #define DISABLE_PASS 0
-static bool IsLibc = true;
+static bool IsLibc = false;
 
 static const char * STACKPOINT_VAR = "__StackPoint";
 // file and foledr where GV is created in musl libc
@@ -74,16 +74,16 @@ static const char * STACKPOINT_FILE_DEF = "__GV.c";
 static const char * LIBC_STACKPOINT_DECL_MOD_FOLDER = "ldso";
 
 // Function-based solution
-#define ZERO_EACH_FUNCTION 0			// requires -fno-optimize-sibling-calls
-#define ZERO_EACH_FUNCTION_WITH_SIGNAL 0
+#define ZERO_EACH_FUNCTION 1			// requires -fno-optimize-sibling-calls
+#define ZERO_EACH_FUNCTION_WITH_SIGNAL 1
 
 // Stack-based solution
 #define ZERO_WITH_STACKPOINT 0			// requires -fno-optimize-sibling-calls - signal handling is accounted for:TODO: make it optional, and also VDSO
 #define ZERO_WITH_STACKPOINT_BULK_REG 0	// erase all register in sensitive function once only
 
 // Call-Graph-based solution (CG)
-#define ZERO_WITH_CG_BULK_REG	1		// erase register at the end of each function or in bulk ? per function requires -fno-optimize-sibling-calls
-#define ZERO_WITH_CG	1		// WARNING: make sure linker is gold: ln -s /usr/bin/ld.gold /use/bin/ld
+#define ZERO_WITH_CG_BULK_REG	0		// erase register at the end of each function or in bulk ? per function requires -fno-optimize-sibling-calls
+#define ZERO_WITH_CG	0		// WARNING: make sure linker is gold: ln -s /usr/bin/ld.gold /use/bin/ld
 
 #define SENSITIVE_ATTRIBUTE	"SENSITIVE"
 #define TYPE_ATTRIBUTE	"type_annotate_"
