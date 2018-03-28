@@ -54,7 +54,8 @@ What we need for production code:
 	- more documentation
 	- split the 3 implementations in different files
 	- remove MACRO to select between implementations, and use compiler option instead
-
+	- make configurable MACROs OFFSET_VDSO_CALLS, _OFFSET_SIGNAL_CPU_STATE, and OFFSET_SIGNAL_HANDLING
+	- make configurable VDSO_UsedRegs
 */
 
 // =================================================================
