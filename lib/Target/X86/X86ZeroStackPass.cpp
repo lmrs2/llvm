@@ -108,10 +108,9 @@ const char * META_MACHINE_FILE = "/tmp/metafile_pass.machine";
 
 
 // All lists of function below would be declared thru a compiler flag
-// in roduction build. This is a PoC.
-// would be declared dynamically with a compiler flag in production
+// in production build. 
 // libc functions called only at the start are allowed to not return
-// these function will not be instrumented, since they don't return...
+// these functions will not be instrumented, since they don't return...
 const char * MUSL_SAFE_START_NON_RETURN[] = { "_start_c", "__libc_start_main", 
 										"__dls2", "__dls3", "_start", "__init_libc", 
 										"__libc_start_init", "do_init_fini" }; 
