@@ -88,9 +88,24 @@ static const char * LIBC_STACKPOINT_DECL_MOD_FOLDER = "ldso";
 #define SENSITIVE_ATTRIBUTE	"SENSITIVE"
 #define TYPE_ATTRIBUTE	"type_annotate_"
 
+// list of registers used by any of the VDSO functions. 
+// I disassembled them for my OS. This would be passed as compiler flag in product build.
+unsigned VDSO_UsedRegs[] = {X86::RBP, X86::RDI, X86::RSI, X86::RAX, X86::R12, X86::RBX, X86::R8, X86::RDX, X86::RCX, X86::R12};
+
+// Offset that must be added for the redzone, vdso calls (provided by kernel), and cpu state saving during signal handling
+// signal/interrupts with process CPU state saved on user stack http://users.cms.caltech.edu/~donnie/cs124/CS124Lec17.pdf
+// do_signal() -> get_signal()
+//			   -> handle_signal() -> setup_rt_frame() -> *_setup_rt_frame() which saves cpu state
+#define OFFSET_VDSO_CALLS		40	// bytes - did manually for my OS
+#define _OFFSET_REDZONE			128	// bytes
+#define _OFFSET_SIGNAL_CPU_STATE	(3072/8)	// bytes used to store CPU state during signal handling. This value is approximate. TODO:get the exact value
+#define OFFSET_SIGNAL_HANDLING	(_OFFSET_REDZONE + _OFFSET_SIGNAL_CPU_STATE)
+
 // metafiles used by CG solution
 const char * META_FILE = "/tmp/metafile_pass";
 const char * META_MACHINE_FILE = "/tmp/metafile_pass.machine";
+
+
 
 // All lists of function below would be declared thru a compiler flag
 // in roduction build. This is a PoC.
@@ -111,19 +126,6 @@ const char * VDSO_FUNCTIONS[] = {"clock_gettime", "gettimeofday", "time"};
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define LEN(X) sizeof(X)/sizeof((X)[0])
-
-// list of registers used by any of the VDSO functions. 
-// I disassembled them for my OS. This would be passed as compiler flag in product build.
-unsigned VDSO_UsedRegs[] = {X86::RBP, X86::RDI, X86::RSI, X86::RAX, X86::R12, X86::RBX, X86::R8, X86::RDX, X86::RCX, X86::R12};
-
-// Offset that must be added for the redzone, vdso calls (provided by kernel), and cpu state saving during signal handling
-// signal/interrupts with process CPU state saved on user stack http://users.cms.caltech.edu/~donnie/cs124/CS124Lec17.pdf
-// do_signal() -> get_signal()
-//			   -> handle_signal() -> setup_rt_frame() -> *_setup_rt_frame() which saves cpu state
-#define OFFSET_VDSO_CALLS		40	// bytes
-#define _OFFSET_REDZONE			128	// bytes
-#define _OFFSET_SIGNAL_CPU_STATE	(3072/8)	// bytes: approximated. TODO: get exact value
-#define OFFSET_SIGNAL_HANDLING	(_OFFSET_REDZONE + _OFFSET_SIGNAL_CPU_STATE)
 
 // Allow calls to exit()/exec*() functions in non-libc code?
 #define ALLOW_EXIT_CALLS	0
